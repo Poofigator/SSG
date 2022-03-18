@@ -1,0 +1,52 @@
+version: "3.3"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: 
+     - ./entrypoint.sh
+    volumes:
+     - ./:/app
+    depends_on:
+      - postgresdb
+    ports:
+      - "8000:8000"
+
+  nextjs-ui:
+    build:
+      context: ./web
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgresdb
+      - web
+  
+  postgresdb:
+    build:
+      context: ./postgres
+      dockerfile: Dockerfile
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: prod_db
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports: 
+     - "5432:5432"
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./static/:/static
+    depends_on:
+      - postgresdb
+      - web
+      - nextjs-ui
